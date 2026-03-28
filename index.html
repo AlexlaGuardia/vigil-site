@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vigil — A Nervous System for AI Agents</title>
+  <meta name="description" content="Vigil gives AI agents persistent awareness, frame-based tool filtering, and structured session handoff. Open-source Python library + MCP server. Zero dependencies." />
+  <meta property="og:title" content="Vigil — A Nervous System for AI Agents" />
+  <meta property="og:description" content="Awareness daemon, frame-based tool filtering, signal protocol, session handoff. pip install vigil-agent" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://vigil-agent.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface: '#0d1117',
+            panel:   '#161b22',
+            border:  '#21262d',
+            accent:  '#38bdf8',
+            'accent-dim': '#0ea5e9',
+            'accent-glow': 'rgba(56,189,248,0.15)',
+            muted:   '#8b949e',
+            bright:  '#e6edf3',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+          },
+          backgroundImage: {
+            'dot-grid': 'radial-gradient(circle, #21262d 1px, transparent 1px)',
+          },
+          backgroundSize: {
+            'dot': '28px 28px',
+          },
+          boxShadow: {
+            'glow-sm': '0 0 12px rgba(56,189,248,0.2)',
+            'glow':    '0 0 24px rgba(56,189,248,0.25)',
+            'glow-lg': '0 0 40px rgba(56,189,248,0.3)',
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { background-color: #0d1117; }
+    body { background-color: #0d1117; }
+
+    /* Dot grid overlay */
+    .dot-bg {
+      background-image: radial-gradient(circle, #21262d 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* Code block */
+    .code-block {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Feature card hover */
+    .feature-card {
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .feature-card:hover {
+      border-color: rgba(56,189,248,0.4);
+      box-shadow: 0 0 24px rgba(56,189,248,0.12);
+      transform: translateY(-2px);
+    }
+
+    /* Glow button */
+    .btn-primary {
+      transition: box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 20px rgba(56,189,248,0.4);
+      background-color: #7dd3fc;
+    }
+
+    /* Nav blur */
+    .nav-blur {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* Comparison table striped */
+    .table-row-alt:nth-child(even) {
+      background-color: rgba(33,38,45,0.4);
+    }
+
+    /* Gradient text */
+    .gradient-text {
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Numbered step connector */
+    .step-line::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 100%;
+      width: 1px;
+      height: 48px;
+      background: linear-gradient(to bottom, #21262d, transparent);
+      transform: translateX(-50%);
+    }
+
+    /* Pricing card popular */
+    .popular-ring {
+      box-shadow: 0 0 0 1px rgba(56,189,248,0.6), 0 0 32px rgba(56,189,248,0.15);
+    }
+
+    /* Scroll indicator */
+    @keyframes bounce-y {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(6px); }
+    }
+    .bounce-y { animation: bounce-y 1.8s ease-in-out infinite; }
+
+    /* Highlight spans in code */
+    .hl-cyan  { color: #38bdf8; }
+    .hl-green { color: #4ade80; }
+    .hl-purple { color: #a78bfa; }
+    .hl-yellow { color: #fbbf24; }
+    .hl-muted  { color: #8b949e; }
+  </style>
+</head>
+<body class="bg-surface text-bright font-sans antialiased">
+
+  <!-- ─── NAVIGATION ───────────────────────────────────────────── -->
+  <nav class="fixed top-0 left-0 right-0 z-50 nav-blur border-b border-border bg-surface/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <!-- Logo mark -->
+        <div class="w-7 h-7 rounded-md bg-accent/10 border border-accent/30 flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="2.5" fill="#38bdf8"/>
+            <circle cx="7" cy="7" r="5.5" stroke="#38bdf8" stroke-width="1" stroke-dasharray="2 2" opacity="0.5"/>
+          </svg>
+        </div>
+        <span class="font-semibold text-bright tracking-tight">vigil</span>
+        <span class="hidden sm:inline text-xs font-mono text-muted bg-panel border border-border rounded px-1.5 py-0.5 ml-1">v1.5.1</span>
+      </div>
+      <div class="hidden md:flex items-center gap-6 text-sm text-muted">
+        <a href="#features" class="hover:text-bright transition-colors">Features</a>
+        <a href="#how-it-works" class="hover:text-bright transition-colors">How it works</a>
+        <a href="#pricing" class="hover:text-bright transition-colors">Pricing</a>
+        <a href="#compare" class="hover:text-bright transition-colors">Compare</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/AlexlaGuardia/Vigil" target="_blank" rel="noopener"
+           class="text-muted hover:text-bright transition-colors">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+        </a>
+        <a href="https://github.com/AlexlaGuardia/Vigil" target="_blank" rel="noopener"
+           class="btn-primary text-sm font-medium bg-accent text-surface px-4 py-1.5 rounded-md">
+          Get Started
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── HERO ─────────────────────────────────────────────────── -->
+  <section class="relative min-h-screen flex flex-col items-center justify-center dot-bg overflow-hidden pt-16">
+    <!-- Radial glow behind headline -->
+    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div class="w-[600px] h-[600px] rounded-full bg-accent/5 blur-3xl"></div>
+    </div>
+
+    <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <!-- Badge -->
+      <div class="inline-flex items-center gap-2 text-xs font-mono text-accent bg-accent/10 border border-accent/20 rounded-full px-3 py-1.5 mb-8">
+        <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-slow"></span>
+        Open source · MIT · Zero dependencies
+      </div>
+
+      <!-- Headline -->
+      <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-tight text-bright mb-6">
+        A nervous system<br />
+        <span class="gradient-text">for AI agents</span>
+      </h1>
+
+      <!-- Subtext -->
+      <p class="text-lg sm:text-xl text-muted max-w-2xl mx-auto mb-10 leading-relaxed">
+        Vigil gives your agents persistent awareness, not just memory.
+        Structured session handoff, frame-based tool filtering, a lightweight
+        signal protocol, and an MCP server that works with Claude, Cursor, and anything
+        else — all in a single Python package.
+      </p>
+
+      <!-- Install pill -->
+      <div class="code-block inline-flex items-center gap-3 px-5 py-3 mb-10 text-sm font-mono text-bright">
+        <span class="text-muted select-none">$</span>
+        <span class="hl-cyan">pip</span>
+        <span>install vigil-agent</span>
+        <button onclick="navigator.clipboard.writeText('pip install vigil-agent')"
+                title="Copy"
+                class="ml-2 text-muted hover:text-accent transition-colors">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- CTAs -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <a href="https://github.com/AlexlaGuardia/Vigil" target="_blank" rel="noopener"
+           class="btn-primary font-medium bg-accent text-surface px-7 py-3 rounded-md text-sm w-full sm:w-auto">
+          Get Started on GitHub
+        </a>
+        <a href="mailto:alex@alexlaguardia.dev?subject=Vigil%20Waitlist"
+           class="font-medium text-sm text-bright border border-border px-7 py-3 rounded-md hover:border-accent/40 hover:bg-accent/5 transition-all w-full sm:w-auto">
+          Join Waitlist
+        </a>
+      </div>
+
+      <!-- Stats row -->
+      <div class="mt-16 flex flex-wrap justify-center gap-8 text-center">
+        <div>
+          <div class="text-2xl font-bold text-bright">14</div>
+          <div class="text-xs text-muted mt-0.5">modules</div>
+        </div>
+        <div class="w-px bg-border self-stretch"></div>
+        <div>
+          <div class="text-2xl font-bold text-bright">268</div>
+          <div class="text-xs text-muted mt-0.5">tests</div>
+        </div>
+        <div class="w-px bg-border self-stretch"></div>
+        <div>
+          <div class="text-2xl font-bold text-bright">7,500+</div>
+          <div class="text-xs text-muted mt-0.5">lines</div>
+        </div>
+        <div class="w-px bg-border self-stretch"></div>
+        <div>
+          <div class="text-2xl font-bold text-bright">0</div>
+          <div class="text-xs text-muted mt-0.5">dependencies</div>
+        </div>
+        <div class="w-px bg-border self-stretch"></div>
+        <div>
+          <div class="text-2xl font-bold text-bright">MIT</div>
+          <div class="text-xs text-muted mt-0.5">license</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scroll indicator -->
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 bounce-y text-muted">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M7 10l5 5 5-5"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ─── PROBLEM ───────────────────────────────────────────────── -->
+  <section class="py-24 bg-panel border-y border-border">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <div class="text-center mb-14">
+        <p class="text-xs font-mono text-accent uppercase tracking-widest mb-3">The problem</p>
+        <h2 class="text-3xl sm:text-4xl font-bold text-bright">Agents are blind between sessions</h2>
+        <p class="text-muted mt-4 max-w-xl mx-auto">Every time an agent boots, it starts from zero. No context, no history, no coordination.</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Pain 1 -->
+        <div class="bg-surface border border-border rounded-xl p-6">
+          <div class="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2">
+              <path d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+            </svg>
+          </div>
+          <h3 class="text-base font-semibold text-bright mb-2">Cold starts every session</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Agents forget everything between conversations. Re-reading codebases, re-establishing context, re-making decisions already made — every single time.
+          </p>
+        </div>
+
+        <!-- Pain 2 -->
+        <div class="bg-surface border border-border rounded-xl p-6">
+          <div class="w-10 h-10 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mb-4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2">
+              <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <h3 class="text-base font-semibold text-bright mb-2">50K+ tokens wasted on tool definitions</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            MCP servers dump their entire tool list into every context window. In large servers, that's 40–80K tokens per session before the agent does anything useful.
+          </p>
+        </div>
+
+        <!-- Pain 3 -->
+        <div class="bg-surface border border-border rounded-xl p-6">
+          <div class="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87m-4-12a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <h3 class="text-base font-semibold text-bright mb-2">Agents can't coordinate</h3>
+          <p class="text-sm text-muted leading-relaxed">
+            Multi-agent systems have no shared awareness layer. One agent's work is invisible to another. Handoffs fail silently. No signal bus, no event protocol.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FEATURES ─────────────────────────────────────────────── -->
+  <section id="features" class="py-24 dot-bg">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <div class="text-center mb-14">
+        <p class="text-xs font-mono text-accent uppercase tracking-widest mb-3">What you get</p>
+        <h2 class="text-3xl sm:text-4xl font-bold text-bright">Everything agents need to stay aware</h2>
+        <p class="text-muted mt-4 max-w-xl mx-auto">Six production-grade modules, zero dependencies, single install.</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        <!-- Feature 1 -->
+        <div class="feature-card bg-panel border border-border rounded-xl p-6 cursor-default">
+          <div class="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center mb-4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+            </svg>
+          </div>
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="text-sm font-semibold text-bright">Awareness Daemon</h3>
+            <span class="text-xs font-mono text-accent bg-accent/10 rounded px-1.5 py-0.5 ml-2 shrink-0">&lt;1s boot</span>
+          </div>
+          <p class="text-sm text-muted leading-relaxed mb-4">
+            Background process compiles system state into a structured AWARENESS.md every 90 seconds. Agents boot with full context — no cold starts.
+          </p>
+          <div class="code-block px-3 py-2 text-xs font-mono text-muted">
+            <span class="hl-cyan">vigil</span> daemon start
+          </div>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card bg-panel border border-border rounded-xl p-6 cursor-default">
+          <div class="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center mb-4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="text-sm font-semibold text-bright">Frame-Based Tool Filtering</h3>
+            <span class="text-xs font-mono text-green-400 bg-green-400/10 rounded px-1.5 py-0.5 ml-2 shrink-0">75–85% savings</span>
+          </div>
+          <p class="text-sm text-muted leading-relaxed mb-4">
+            Expose only the tools relevant to the current task. Switch frames with a query param. Eliminate 40–80K tokens of noise from every context window.
+          </p>
+          <div class="code-block px-3 py-2 text-xs font-mono text-muted">
+            /sse?frame=<span class="hl-purple">backend</span>
+          </div>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card bg-panel border border-border rounded-xl p-6 cursor-default">
+          <div class="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center mb-4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+          </div>
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="text-sm font-semibold text-bright">Signal Protocol</h3>
+            <span class="text-xs font-mono text-muted bg-border rounded px-1.5 py-0.5 ml-2 shrink-0">event bus</span>
+          </div>
+          <p class="text-sm text-muted leading-relaxed mb-4">
+            Lightweight structured signals between agents and systems. Post from anywhere — CLI, Python, HTTP. Queryable signal history. Coordination without queues.
+          </p>
+          <div class="code-block px-3 py-2 text-xs font-mono text-muted">
+            vigil signal <span class="hl-green">"deploy complete"</span>
+          </div>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card bg-panel border border-border rounded-xl p-6 cursor-default">
+          <div class="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center mb-4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+            </svg>
+          </div>
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="text-sm font-semibold text-bright">Session Handoff</h3>
+            <span class="text-xs font-mono text-muted bg-border rounded px-1.5 py-0.5 ml-2 shrink-0">structured</span>
+          </div>
+          <p class="text-sm text-muted leading-relaxed mb-4">
+            Structured STATE.md written at session end. Next agent — or next session of the same agent — picks up exactly where you left off. No verbal summaries needed.
+          </p>
+          <div class="code-block px-3 py-2 text-xs font-mono text-muted">
+            vigil handoff <span class="hl-yellow">--write</span>
+          </div>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="feature-card bg-panel border border-border rounded-xl p-6 cursor-default">
+          <div class="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center mb-4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35M11 8v3m0 3h.01"/>
+            </svg>
+          </div>
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="text-sm font-semibold text-bright">Knowledge Auto-Extract</h3>
+            <span class="text-xs font-mono text-muted bg-border rounded px-1.5 py-0.5 ml-2 shrink-0">pattern detect</span>
+          </div>
+          <p class="text-sm text-muted leading-relaxed mb-4">
+            Vigil watches signals and session logs to extract durable knowledge — patterns, decisions, corrections. Stored and surfaced automatically, not buried.
+          </p>
+          <div class="code-block px-3 py-2 text-xs font-mono text-muted">
+            vigil knowledge <span class="hl-cyan">list</span>
+          </div>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="feature-card bg-panel border border-border rounded-xl p-6 cursor-default">
+          <div class="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center mb-4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+            </svg>
+          </div>
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="text-sm font-semibold text-bright">MCP Server</h3>
+            <span class="text-xs font-mono text-muted bg-border rounded px-1.5 py-0.5 ml-2 shrink-0">stdio + SSE</span>
+          </div>
+          <p class="text-sm text-muted leading-relaxed mb-4">
+            Built-in MCP server exposes all Vigil tools to any MCP-compatible client. Works out-of-the-box with Claude, Cursor, Windsurf, and any MCP host.
+          </p>
+          <div class="code-block px-3 py-2 text-xs font-mono text-muted">
+            <span class="hl-cyan">vigil</span> serve <span class="hl-yellow">--transport</span> sse
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── HOW IT WORKS ─────────────────────────────────────────── -->
+  <section id="how-it-works" class="py-24 bg-panel border-y border-border">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <div class="text-center mb-14">
+        <p class="text-xs font-mono text-accent uppercase tracking-widest mb-3">How it works</p>
+        <h2 class="text-3xl sm:text-4xl font-bold text-bright">Up in three commands</h2>
+        <p class="text-muted mt-4 max-w-lg mx-auto">No configuration files required to get started. Works with your existing MCP setup.</p>
+      </div>
+
+      <div class="space-y-6">
+
+        <!-- Step 1 -->
+        <div class="flex gap-6 items-start">
+          <div class="shrink-0 flex flex-col items-center">
+            <div class="w-9 h-9 rounded-full bg-accent text-surface font-bold text-sm flex items-center justify-center shadow-glow">1</div>
+            <div class="w-px flex-1 bg-border mt-2 min-h-[48px]"></div>
+          </div>
+          <div class="flex-1 pb-6">
+            <h3 class="text-base font-semibold text-bright mb-1">Install</h3>
+            <p class="text-sm text-muted mb-3">Single package from PyPI. No dependencies pulled in.</p>
+            <div class="code-block px-4 py-3 text-sm font-mono">
+              <span class="hl-muted">$</span> <span class="hl-cyan">pip</span> install vigil-agent
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="flex gap-6 items-start">
+          <div class="shrink-0 flex flex-col items-center">
+            <div class="w-9 h-9 rounded-full bg-accent text-surface font-bold text-sm flex items-center justify-center shadow-glow">2</div>
+            <div class="w-px flex-1 bg-border mt-2 min-h-[48px]"></div>
+          </div>
+          <div class="flex-1 pb-6">
+            <h3 class="text-base font-semibold text-bright mb-1">Initialize and start the daemon</h3>
+            <p class="text-sm text-muted mb-3">Creates a <code class="text-accent text-xs font-mono bg-accent/10 px-1 rounded">vigil.db</code> and begins compiling AWARENESS.md every 90 seconds.</p>
+            <div class="code-block px-4 py-3 text-sm font-mono space-y-1">
+              <div><span class="hl-muted">$</span> <span class="hl-cyan">vigil</span> init</div>
+              <div><span class="hl-muted">$</span> <span class="hl-cyan">vigil</span> daemon start</div>
+              <div class="hl-green">✓ Daemon running. Awareness compiling every 90s.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="flex gap-6 items-start">
+          <div class="shrink-0">
+            <div class="w-9 h-9 rounded-full bg-accent text-surface font-bold text-sm flex items-center justify-center shadow-glow">3</div>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-base font-semibold text-bright mb-1">Start the MCP server</h3>
+            <p class="text-sm text-muted mb-3">Point Claude or Cursor at the SSE URL. Add a frame param to scope tools.</p>
+            <div class="code-block px-4 py-3 text-sm font-mono space-y-1">
+              <div><span class="hl-muted">$</span> <span class="hl-cyan">vigil</span> serve</div>
+              <div class="hl-muted"># or with frames</div>
+              <div><span class="hl-muted">$</span> <span class="hl-cyan">vigil</span> serve <span class="hl-yellow">--transport</span> sse <span class="hl-yellow">--port</span> 8100</div>
+              <div class="hl-green">✓ MCP server live at http://localhost:8100/sse</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Docs note -->
+      <div class="mt-10 text-center">
+        <a href="https://github.com/AlexlaGuardia/Vigil#readme" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-2 text-sm text-accent hover:underline">
+          Full documentation on GitHub
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── PRICING ───────────────────────────────────────────────── -->
+  <section id="pricing" class="py-24 dot-bg">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <div class="text-center mb-6">
+        <p class="text-xs font-mono text-accent uppercase tracking-widest mb-3">Pricing</p>
+        <h2 class="text-3xl sm:text-4xl font-bold text-bright">Start free. Scale when ready.</h2>
+        <p class="text-muted mt-4 max-w-xl mx-auto">The open-source core is always free. Hosted cloud tier is coming Q3 2026.</p>
+      </div>
+
+      <!-- Q3 badge -->
+      <div class="flex justify-center mb-12">
+        <div class="inline-flex items-center gap-2 text-xs font-mono text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 rounded-full px-4 py-2">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+          Hosted tier launching Q3 2026 — join the waitlist to get notified
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+        <!-- Free -->
+        <div class="bg-panel border border-border rounded-xl p-6 flex flex-col">
+          <div class="mb-6">
+            <p class="text-xs font-mono text-muted uppercase tracking-wide mb-2">Free</p>
+            <div class="flex items-end gap-1 mb-1">
+              <span class="text-3xl font-bold text-bright">$0</span>
+            </div>
+            <p class="text-xs text-muted">forever · open source</p>
+          </div>
+          <ul class="space-y-2.5 text-sm text-muted flex-1 mb-6">
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> 1 project</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> 2 agents</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> 5K signals / mo</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> All core modules</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> Self-hosted</li>
+          </ul>
+          <a href="https://github.com/AlexlaGuardia/Vigil" target="_blank" rel="noopener"
+             class="w-full text-center text-sm font-medium border border-border py-2.5 rounded-md hover:border-accent/40 hover:bg-accent/5 transition-all">
+            Start Free
+          </a>
+        </div>
+
+        <!-- Pro -->
+        <div class="bg-panel border border-accent/40 rounded-xl p-6 flex flex-col popular-ring relative">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+            <span class="text-xs font-mono bg-accent text-surface px-3 py-1 rounded-full font-medium">Popular</span>
+          </div>
+          <div class="mb-6">
+            <p class="text-xs font-mono text-accent uppercase tracking-wide mb-2">Pro</p>
+            <div class="flex items-end gap-1 mb-1">
+              <span class="text-3xl font-bold text-bright">$9</span>
+              <span class="text-sm text-muted mb-1">/ mo</span>
+            </div>
+            <p class="text-xs text-muted">cloud hosted · coming Q3</p>
+          </div>
+          <ul class="space-y-2.5 text-sm text-muted flex-1 mb-6">
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> 1 project</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> Unlimited agents</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> 50K signals / mo</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> Hosted MCP server</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> Dashboard UI</li>
+          </ul>
+          <a href="mailto:alex@alexlaguardia.dev?subject=Vigil%20Waitlist%20-%20Pro"
+             class="btn-primary w-full text-center text-sm font-medium bg-accent text-surface py-2.5 rounded-md">
+            Join Waitlist
+          </a>
+        </div>
+
+        <!-- Team -->
+        <div class="bg-panel border border-border rounded-xl p-6 flex flex-col">
+          <div class="mb-6">
+            <p class="text-xs font-mono text-muted uppercase tracking-wide mb-2">Team</p>
+            <div class="flex items-end gap-1 mb-1">
+              <span class="text-3xl font-bold text-bright">$29</span>
+              <span class="text-sm text-muted mb-1">/ mo</span>
+            </div>
+            <p class="text-xs text-muted">cloud hosted · coming Q3</p>
+          </div>
+          <ul class="space-y-2.5 text-sm text-muted flex-1 mb-6">
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> 5 projects</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> Unlimited agents</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> 200K signals / mo</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> SSO / team access</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> Priority support</li>
+          </ul>
+          <a href="mailto:alex@alexlaguardia.dev?subject=Vigil%20Waitlist%20-%20Team"
+             class="w-full text-center text-sm font-medium border border-border py-2.5 rounded-md hover:border-accent/40 hover:bg-accent/5 transition-all">
+            Join Waitlist
+          </a>
+        </div>
+
+        <!-- Enterprise -->
+        <div class="bg-panel border border-border rounded-xl p-6 flex flex-col">
+          <div class="mb-6">
+            <p class="text-xs font-mono text-muted uppercase tracking-wide mb-2">Enterprise</p>
+            <div class="flex items-end gap-1 mb-1">
+              <span class="text-3xl font-bold text-bright">$99</span>
+              <span class="text-sm text-muted mb-1">/ mo</span>
+            </div>
+            <p class="text-xs text-muted">cloud hosted · coming Q3</p>
+          </div>
+          <ul class="space-y-2.5 text-sm text-muted flex-1 mb-6">
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> Unlimited projects</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> Unlimited agents</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> Unlimited signals</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> SLA + uptime guarantee</li>
+            <li class="flex items-center gap-2"><span class="text-accent">✓</span> Custom frames</li>
+          </ul>
+          <a href="mailto:alex@alexlaguardia.dev?subject=Vigil%20Enterprise"
+             class="w-full text-center text-sm font-medium border border-border py-2.5 rounded-md hover:border-accent/40 hover:bg-accent/5 transition-all">
+            Contact Us
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── COMPARISON ───────────────────────────────────────────── -->
+  <section id="compare" class="py-24 bg-panel border-y border-border">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      <div class="text-center mb-14">
+        <p class="text-xs font-mono text-accent uppercase tracking-widest mb-3">How it fits</p>
+        <h2 class="text-3xl sm:text-4xl font-bold text-bright">The awareness layer, not a replacement</h2>
+        <p class="text-muted mt-4 max-w-xl mx-auto">
+          Vigil is complementary to memory tools. It handles coordination, awareness, and tool scope — the layers that memory libraries don't cover.
+        </p>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-border">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-border bg-surface">
+              <th class="text-left px-5 py-4 text-muted font-medium w-[30%]">Capability</th>
+              <th class="px-4 py-4 text-center font-semibold text-accent">Vigil</th>
+              <th class="px-4 py-4 text-center text-muted font-medium">Mem0</th>
+              <th class="px-4 py-4 text-center text-muted font-medium">Letta</th>
+              <th class="px-4 py-4 text-center text-muted font-medium">LangGraph</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-border table-row-alt">
+              <td class="px-5 py-3.5 text-muted">Session awareness / context compile</td>
+              <td class="px-4 py-3.5 text-center text-accent font-bold">✓</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-muted">partial</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+            </tr>
+            <tr class="border-b border-border table-row-alt">
+              <td class="px-5 py-3.5 text-muted">Frame-based tool filtering</td>
+              <td class="px-4 py-3.5 text-center text-accent font-bold">✓</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+            </tr>
+            <tr class="border-b border-border table-row-alt">
+              <td class="px-5 py-3.5 text-muted">Signal / event protocol</td>
+              <td class="px-4 py-3.5 text-center text-accent font-bold">✓</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-muted">partial</td>
+            </tr>
+            <tr class="border-b border-border table-row-alt">
+              <td class="px-5 py-3.5 text-muted">Structured session handoff</td>
+              <td class="px-4 py-3.5 text-center text-accent font-bold">✓</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-muted">partial</td>
+              <td class="px-4 py-3.5 text-center text-muted">partial</td>
+            </tr>
+            <tr class="border-b border-border table-row-alt">
+              <td class="px-5 py-3.5 text-muted">Vector / semantic memory</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-green-400 font-bold">✓</td>
+              <td class="px-4 py-3.5 text-center text-green-400 font-bold">✓</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+            </tr>
+            <tr class="border-b border-border table-row-alt">
+              <td class="px-5 py-3.5 text-muted">Multi-agent orchestration</td>
+              <td class="px-4 py-3.5 text-center text-muted">signals</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-green-400 font-bold">✓</td>
+              <td class="px-4 py-3.5 text-center text-green-400 font-bold">✓</td>
+            </tr>
+            <tr class="border-b border-border table-row-alt">
+              <td class="px-5 py-3.5 text-muted">Native MCP server</td>
+              <td class="px-4 py-3.5 text-center text-accent font-bold">✓</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+            </tr>
+            <tr class="table-row-alt">
+              <td class="px-5 py-3.5 text-muted">Zero dependencies</td>
+              <td class="px-4 py-3.5 text-center text-accent font-bold">✓</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+              <td class="px-4 py-3.5 text-center text-muted">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="text-xs text-muted text-center mt-5">
+        Use Vigil alongside Mem0 or Letta — they operate at different layers. Vigil handles coordination and awareness; memory tools handle retrieval.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─── CTA STRIP ─────────────────────────────────────────────── -->
+  <section class="py-20 relative overflow-hidden dot-bg">
+    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div class="w-[500px] h-[300px] rounded-full bg-accent/5 blur-3xl"></div>
+    </div>
+    <div class="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 text-center">
+      <h2 class="text-3xl sm:text-4xl font-bold text-bright mb-4">Give your agents a nervous system</h2>
+      <p class="text-muted mb-8 text-lg">Open source. Zero dependencies. Works with Claude, Cursor, and any MCP client.</p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <a href="https://github.com/AlexlaGuardia/Vigil" target="_blank" rel="noopener"
+           class="btn-primary font-medium bg-accent text-surface px-8 py-3 rounded-md text-sm w-full sm:w-auto">
+          View on GitHub
+        </a>
+        <a href="mailto:alex@alexlaguardia.dev?subject=Vigil%20Waitlist"
+           class="font-medium text-sm text-bright border border-border px-8 py-3 rounded-md hover:border-accent/40 hover:bg-accent/5 transition-all w-full sm:w-auto">
+          Join Waitlist
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ────────────────────────────────────────────────── -->
+  <footer class="bg-panel border-t border-border">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+
+        <!-- Logo + tagline -->
+        <div class="flex items-center gap-3">
+          <div class="w-7 h-7 rounded-md bg-accent/10 border border-accent/30 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="2.5" fill="#38bdf8"/>
+              <circle cx="7" cy="7" r="5.5" stroke="#38bdf8" stroke-width="1" stroke-dasharray="2 2" opacity="0.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="text-sm font-semibold text-bright">vigil</div>
+            <div class="text-xs text-muted">Cognitive infrastructure for AI agents</div>
+          </div>
+        </div>
+
+        <!-- Links -->
+        <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted">
+          <a href="https://github.com/AlexlaGuardia/Vigil" target="_blank" rel="noopener"
+             class="hover:text-bright transition-colors flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+            </svg>
+            GitHub
+          </a>
+          <a href="https://pypi.org/project/vigil-agent/" target="_blank" rel="noopener"
+             class="hover:text-bright transition-colors flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.974 0C5.91 0 6.3 2.656 6.3 2.656l.007 2.752h5.773v.826H3.942S0 5.788 0 11.91c0 6.123 3.384 5.905 3.384 5.905h2.02v-2.84s-.109-3.384 3.329-3.384h5.739s3.22.052 3.22-3.113V3.113S18.241 0 11.974 0zm-3.19 1.796a1.039 1.039 0 1 1 0 2.077 1.039 1.039 0 0 1 0-2.077zM12.026 24c6.064 0 5.674-2.656 5.674-2.656l-.007-2.752h-5.773v-.826h8.138S24 18.212 24 12.09c0-6.123-3.384-5.905-3.384-5.905h-2.02v2.84s.109 3.384-3.329 3.384h-5.739s-3.22-.052-3.22 3.113v5.265S5.759 24 12.026 24zm3.19-1.796a1.039 1.039 0 1 1 0-2.077 1.039 1.039 0 0 1 0 2.077z"/>
+            </svg>
+            PyPI
+          </a>
+          <a href="https://dev.to" target="_blank" rel="noopener"
+             class="hover:text-bright transition-colors">Dev.to Article</a>
+          <a href="https://github.com/AlexlaGuardia/Vigil/blob/main/LICENSE" target="_blank" rel="noopener"
+             class="hover:text-bright transition-colors">MIT License</a>
+        </div>
+
+      </div>
+
+      <div class="border-t border-border mt-8 pt-6 text-center text-xs text-muted">
+        Copyright &copy; 2026 Alex LaGuardia. Built in Pennsylvania. MIT License.
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
