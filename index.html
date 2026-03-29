@@ -162,6 +162,7 @@
       <div class="hidden md:flex items-center gap-6 text-sm text-muted">
         <a href="#features" class="hover:text-bright transition-colors">Features</a>
         <a href="#how-it-works" class="hover:text-bright transition-colors">How it works</a>
+        <a href="#use-cases" class="hover:text-bright transition-colors">Use cases</a>
         <a href="#pricing" class="hover:text-bright transition-colors">Pricing</a>
         <a href="#compare" class="hover:text-bright transition-colors">Compare</a>
       </div>
@@ -194,6 +195,7 @@
       <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-1">
         <a href="#features" onclick="closeMobileMenu()" class="px-3 py-2.5 text-sm text-muted hover:text-bright hover:bg-panel rounded-md transition-colors">Features</a>
         <a href="#how-it-works" onclick="closeMobileMenu()" class="px-3 py-2.5 text-sm text-muted hover:text-bright hover:bg-panel rounded-md transition-colors">How it works</a>
+        <a href="#use-cases" onclick="closeMobileMenu()" class="px-3 py-2.5 text-sm text-muted hover:text-bright hover:bg-panel rounded-md transition-colors">Use cases</a>
         <a href="#pricing" onclick="closeMobileMenu()" class="px-3 py-2.5 text-sm text-muted hover:text-bright hover:bg-panel rounded-md transition-colors">Pricing</a>
         <a href="#compare" onclick="closeMobileMenu()" class="px-3 py-2.5 text-sm text-muted hover:text-bright hover:bg-panel rounded-md transition-colors">Compare</a>
         <div class="border-t border-border mt-2 pt-3">
@@ -621,6 +623,68 @@ watch = instrument(mcp)
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/>
           </svg>
         </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── USE CASES ─────────────────────────────────────────────── -->
+  <section id="use-cases" class="py-24 dot-bg">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <div class="text-center mb-16">
+        <p class="text-xs font-mono text-accent uppercase tracking-widest mb-3">Use cases</p>
+        <h2 class="text-3xl sm:text-4xl font-bold text-bright">Built for real-world agent workflows</h2>
+        <p class="text-muted mt-4 max-w-xl mx-auto">Vigil works anywhere agents need shared context, structured handoff, or scoped tool access.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Use case 1: Code Review -->
+        <div class="bg-panel border border-border rounded-xl p-6 hover:-translate-y-0.5 transition-transform">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-surface flex items-center justify-center border border-border">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+            </div>
+            <h3 class="font-semibold text-bright">Multi-Agent Code Review</h3>
+          </div>
+          <p class="text-sm text-muted leading-relaxed mb-4">Three agents review the same PR — security, style, and correctness. Each emits signals as they work. The next agent picks up where the last left off via structured handoff.</p>
+          <div class="bg-surface border border-border rounded-lg p-3 font-mono text-xs leading-relaxed">
+            <span style="color:#8b949e">$</span> <span style="color:#4ade80">vigil signal</span> security-reviewer <span style="color:#38bdf8">"No vulnerabilities found"</span><br>
+            <span style="color:#8b949e">$</span> <span style="color:#4ade80">vigil handoff</span> security-reviewer <span style="color:#38bdf8">"Clear"</span> --next-steps <span style="color:#38bdf8">"Style review"</span><br>
+            <span style="color:#8b949e">$</span> <span style="color:#4ade80">vigil resume</span> style-reviewer
+          </div>
+        </div>
+
+        <!-- Use case 2: CI/CD -->
+        <div class="bg-panel border border-border rounded-xl p-6 hover:-translate-y-0.5 transition-transform">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-surface flex items-center justify-center border border-border">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"><path d="M12 2v4m0 12v4M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+            </div>
+            <h3 class="font-semibold text-bright">CI/CD Pipeline Signals</h3>
+          </div>
+          <p class="text-sm text-muted leading-relaxed mb-4">GitHub Actions emit signals on every deploy. Vigil triggers fire Slack webhooks on failure, add focus items on rollback, and keep your agents aware of production state.</p>
+          <div class="bg-surface border border-border rounded-lg p-3 font-mono text-xs leading-relaxed">
+            <span style="color:#8b949e"># In your GitHub Action:</span><br>
+            <span style="color:#4ade80">curl</span> -X POST $VIGIL_URL/api/signal \<br>
+            &nbsp;&nbsp;-d <span style="color:#38bdf8">'{"from_agent":"ci","content":"Deploy v2.3 live"}'</span>
+          </div>
+        </div>
+
+        <!-- Use case 3: Scoped Agents -->
+        <div class="bg-panel border border-border rounded-xl p-6 hover:-translate-y-0.5 transition-transform">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-surface flex items-center justify-center border border-border">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            </div>
+            <h3 class="font-semibold text-bright">Scoped Research Agents</h3>
+          </div>
+          <p class="text-sm text-muted leading-relaxed mb-4">Frame-based filtering gives each agent only the tools it needs. A research agent sees search tools; a writing agent sees document tools. Same MCP server, different frames — 50-90% fewer tokens.</p>
+          <div class="bg-surface border border-border rounded-lg p-3 font-mono text-xs leading-relaxed">
+            <span style="color:#8b949e"># Research agent connects to:</span><br>
+            <span style="color:#4ade80">vigil serve</span> --transport sse <span style="color:#38bdf8">?frame=research</span><br>
+            <span style="color:#8b949e"># Writing agent connects to:</span><br>
+            <span style="color:#4ade80">vigil serve</span> --transport sse <span style="color:#38bdf8">?frame=writing</span>
+          </div>
+        </div>
       </div>
     </div>
   </section>
